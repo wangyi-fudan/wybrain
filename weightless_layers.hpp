@@ -128,3 +128,30 @@ struct	wl_dot_product{
 	}
 };
 
+template<unsigned	width,	unsigned	height,	unsigned	batch=1>
+struct	wl_2d_random_patch{
+	matrix<batch,height*width>	o;
+	void	forward(const	float	*inp,	unsigned	w,	unsigned	h,	unsigned	b=0){
+		float	*out=o(b);
+		memset(out,	0,	height*width*sizeof(float));
+		unsigned	x=wy2u0k(wyrand(&wybrain_seed),w-width+1);
+		unsigned	y=wy2u0k(wyrand(&wybrain_seed),h-height+1);
+		for(unsigned	i=0;	i<height;	i++)	for(unsigned	j=0;	j<width;	j++)	out[i*width+j]=inp[(i+y)*w+j+x];
+	}
+};
+
+template<int	width,	int	height,	unsigned	batch=1>
+struct	wl_2d_random_rotated_patch{
+	matrix<batch,height*width>	o;
+	void	forward(const	float	*inp,	int	w,	int	h,	float	theta,	unsigned	b=0){
+		float	*out=o(b);
+		memset(out,	0,	height*width*sizeof(float));
+		float	x=wy2u01(wyrand(&wybrain_seed))*(w-width);
+		float	y=wy2u01(wyrand(&wybrain_seed))*(h-height);
+		float	cx=0.5f*width,	cy=0.5f*height,	t=(wy2u01(wyrand(&wybrain_seed))-0.5)*theta,	cost=cosf(t),	sint=sinf(t);
+		for(int	i=0;	i<height;	i++)	for(int	j=0;	j<width;	j++){
+			int	tx=(j-cx)*cost+(i-cy)*sint+x+cx,	ty=-(j-cx)*sint+(i-cy)*cost+y+cy;
+			if(tx>=0&&tx<w&&ty>=0&&ty<h)	out[i*width+j]=inp[ty*w+tx];
+		}
+	}
+};
