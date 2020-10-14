@@ -1,6 +1,6 @@
 #include	"common.hpp"
 template<unsigned	input,	unsigned	output,	unsigned	batch=1,	class	actfun=af_default>
-struct	embed_dense{
+struct	em_dense{
 	matrix<input+1,output>	w;
 	matrix<batch,output>	o;
 	void	forward(const	float	*inp,	unsigned	b=0){
@@ -25,7 +25,7 @@ struct	embed_dense{
 };
 
 template<unsigned	input,	unsigned	output,	unsigned	batch=1,	class	actfun=af_default>
-struct	embed_binary{
+struct	em_binary{
 	matrix<input+1,output>	w;
 	matrix<batch,output>	o;
 	void	forward(const	void	*inp,	unsigned	b=0){
@@ -50,7 +50,7 @@ struct	embed_binary{
 };
 
 template<unsigned	input,	unsigned	output,	unsigned	batch=1,	class	actfun=af_default>
-struct	embed_sparse{
+struct	em_sparse{
 	matrix<input+1,output>	w;
 	matrix<batch,output>	o;
 	void	forward(const	unsigned	*inp,	unsigned	n,	unsigned	b=0){
