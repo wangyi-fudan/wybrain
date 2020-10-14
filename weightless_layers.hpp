@@ -10,9 +10,9 @@ struct	wl_softmax{
 		for(unsigned	i=0;	i<input;	i++)	sum+=(out[i]=expf(inp[i]-ma));
 		for(unsigned	i=0;	i<input;	i++)	out[i]/=sum;
 	}
-	void	backward(const	float	*gradient,	unsigned	b=0){
+	void	backward(const	float	*bac,	unsigned	b=0){
 		float	*gra=g(b),	*out=o(b);
-		for(unsigned	i=0;	i<input;	i++)	gra[i]=out[i]*(1-out[i])*gradient[i];
+		for(unsigned	i=0;	i<input;	i++)	gra[i]=out[i]*(1-out[i])*bac[i];
 	}
 };
 
@@ -23,21 +23,23 @@ struct	wl_standardize{
 	wl_standardize(){	for(unsigned	i=0;	i<input;	i++){	w(i)[0]=1;	w(i)[1]=0;	w(i)[2]=1;	}	}
 	matrix<batch,input>	g;
 	matrix<batch,input>	o;
-	void	forward(const	float	*inp,	unsigned	b=0){
+	void	forward(const	float	*inp,	bool	update,	unsigned	b=0){
 		float	*out=o(b);
 		for(unsigned	i=0;	i<input;	i++){
-			w(i)[0]=w(i)[0]*decay+1;
-			w(i)[1]=w(i)[1]*decay+inp[i];
-			w(i)[2]=w(i)[2]*decay+inp[i]*inp[i];
+			if(update){
+				w(i)[0]=w(i)[0]*decay+1;
+				w(i)[1]=w(i)[1]*decay+inp[i];
+				w(i)[2]=w(i)[2]*decay+inp[i]*inp[i];
+			}
 			double	m=w(i)[1]/w(i)[0],	d=w(i)[2]/w(i)[0]-m*m;
 			out[i]=d>0?(inp[i]-m)/sqrt(d):0;
 		}
 	}
-	void	backward(float	*gradient,	unsigned	b=0){
+	void	backward(float	*bac,	unsigned	b=0){
 		float	*gra=g(b);
 		for(unsigned	i=0;	i<input;	i++){
 			double	m=w(i)[1]/w(i)[0],	d=w(i)[2]/w(i)[0]-m*m;
-			gra[i]=gradient[i]*(d>0?sqrt(d):0);
+			gra[i]=bac[i]*(d>0?sqrt(d):0);
 		}
 	}
 	void	original(const	float	*inp,	unsigned	b=0){
@@ -50,18 +52,49 @@ struct	wl_standardize{
 };
 
 template<unsigned	input,	unsigned	batch=1>
+struct	wl_normalize{
+	const	double	decay=0.999999;
+	matrix<input,2,double>	w;
+	wl_normalize(){	for(unsigned	i=0;	i<input;	i++){	w(i)[0]=w(i)[1]=0;	}	}
+	matrix<batch,input>	g;
+	matrix<batch,input>	o;
+	void	forward(const	float	*inp,	float	stdev,	bool	update,	unsigned	b=0){
+		float	*out=o(b);
+		for(unsigned	i=0;	i<input;	i++){
+			if(update){
+				w(i)[0]=w(i)[0]*decay+1;
+				w(i)[1]=w(i)[1]*decay+inp[i];
+			}
+			double	m=w(i)[1]/w(i)[0];
+			out[i]=(inp[i]-m)/stdev;
+		}
+	}
+	void	backward(float	*bac,	float	stdev,	unsigned	b=0){
+		float	*gra=g(b);
+		for(unsigned	i=0;	i<input;	i++)	gra[i]=bac[i]/stdev;
+	}
+	void	original(const	float	*inp,	float	stdev,	unsigned	b=0){
+		float	*gra=g(b);
+		for(unsigned	i=0;	i<input;	i++){
+			double	m=w(i)[1]/w(i)[0];
+			gra[i]=inp[i]*stdev+m;
+		}
+	}
+};
+
+template<unsigned	input,	unsigned	batch=1>
 struct	wl_dropout{
 	matrix<batch,input>	g;
 	matrix<batch,input>	o;
 	void	forward(const	float	*inp,	double	drop,	unsigned	b=0){
 		float	*out=o(b);
 		if(drop>0)	for(unsigned	i=0;	i<input;	i++)	out[i]=(wy2u01(wyrand(&wybrain_seed))>drop)*inp[i];
-		else	if(drop<0)	for(unsigned	i=0;	i<input;	i++)	out[i]=(1-drop)*inp[i];
+		else	if(drop<0)	for(unsigned	i=0;	i<input;	i++)	out[i]=(1+drop)*inp[i];
 		else	memcpy(out,	inp,	input*sizeof(float));
 	}
-	void	backward(float	*gradient,	unsigned	b=0){
+	void	backward(float	*bac,	unsigned	b=0){
 		float	*gra=g(b),	*out=o(b);
-		for(unsigned	i=0;	i<input;	i++)	gra[i]=gradient[i]*(out[i]!=0);
+		for(unsigned	i=0;	i<input;	i++)	gra[i]=bac[i]*(out[i]!=0);
 	}
 };
 
@@ -74,9 +107,9 @@ struct	wl_noise{
 		if(noise>0)	for(unsigned	i=0;	i<input;	i++)	out[i]=noise*wy2gau(wyrand(&wybrain_seed))+inp[i];
 		else	memcpy(out,	inp,	input*sizeof(float));
 	}
-	void	backward(float	*gradient,	unsigned	b=0){
+	void	backward(float	*bac,	unsigned	b=0){
 		float	*gra=g(b);
-		memcpy(gra,	gradient,	input*sizeof(float));
+		memcpy(gra,	bac,	input*sizeof(float));
 	}
 };
 
@@ -89,8 +122,8 @@ struct	wl_dot_product{
 		for(unsigned	i=0;	i<input;	i++)	*out+=inp0[i]*inp1[i];
 		*out/=sqrt(input);
 	}
-	void	backward(const	float	*inp0,  const	float	*inp1,	float	*gradient,	unsigned	b=0){
-		float	*gra0=g0(b),	*gra1=g1(b),	s=*gradient/sqrt(input);
+	void	backward(const	float	*inp0,  const	float	*inp1,	float	*bac,	unsigned	b=0){
+		float	*gra0=g0(b),	*gra1=g1(b),	s=*bac/sqrt(input);
 		for(unsigned	i=0;	i<input;	i++){	gra0[i]=s*inp1[i];	gra1[i]=s*inp0[i];	}
 	}
 };

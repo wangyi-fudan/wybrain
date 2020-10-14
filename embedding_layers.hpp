@@ -13,12 +13,12 @@ struct	embed_dense{
 		const	float	sca=1/sqrt(input+1);	actfun	af;
 		for(unsigned	i=0;	i<output;	i++)	out[i]=af.act(sca*out[i]);
 	}
-	void	backward(const	float	*inp,	const	float	*gradient,	float	eta,	unsigned	b=0){
+	void	backward(const	float	*inp,	const	float	*bac,	unsigned	b=0){
 		float	*out=o(b);
 		const	float	sca=1/sqrtf(input+1);	actfun	af;
-		for(unsigned	i=0;	i<output;	i++)	out[i]=af.gra(out[i])*gradient[i]*sca;
+		for(unsigned	i=0;	i<output;	i++)	out[i]=af.gra(out[i])*bac[i]*sca;
 		for(unsigned	i=0;	i<=input;	i++){
-			float	s=(i<input?inp[i]:1)*eta,	*p=w(i);
+			float	s=(i<input?inp[i]:1),	*p=w(i);
 			for(unsigned	j=0;	j<output;	j++)	p[j]-=s*out[j];
 		}
 	}
@@ -38,12 +38,12 @@ struct	embed_binary{
 		const	float	sca=1/sqrt(input+1);	actfun	af;
 		for(unsigned	i=0;	i<output;	i++)	out[i]=af.act(sca*out[i]);
 	}
-	void	backward(const	void	*inp,	const	float	*gradient,	float	eta,	unsigned	b=0){
+	void	backward(const	void	*inp,	const	float	*bac,	unsigned	b=0){
 		float	*out=o(b);
 		const	float	sca=1/sqrtf(input+1);	actfun	af;	const   uint8_t *dat=(const uint8_t*)inp;
-		for(unsigned	i=0;	i<output;	i++)	out[i]=af.gra(out[i])*gradient[i]*sca;
+		for(unsigned	i=0;	i<output;	i++)	out[i]=af.gra(out[i])*bac[i]*sca;
 		for(unsigned	i=0;	i<=input;	i++){
-			float	s=(i<input?(((int)((dat[i>>3]>>(i&7))&1))<<1)-1:1)*eta,	*p=w(i);
+			float	s=(i<input?(((int)((dat[i>>3]>>(i&7))&1))<<1)-1:1),	*p=w(i);
 			for(unsigned	j=0;	j<output;	j++)	p[j]-=s*out[j];
 		}
 	}
@@ -63,10 +63,10 @@ struct	embed_sparse{
 		const	float	sca=1/sqrt(n+1);	actfun	af;
 		for(unsigned	i=0;	i<output;	i++)	out[i]=af.act(sca*out[i]);
 	}
-	void	backward(const	unsigned	*inp,	unsigned	n,	const	float	*gradient,	float	eta,	unsigned	b=0){
+	void	backward(const	unsigned	*inp,	unsigned	n,	const	float	*bac,	unsigned	b=0){
 		float	*out=o(b);
 		const	float	sca=1/sqrtf(n+1);	actfun	af;
-		for(unsigned	i=0;	i<output;	i++)	out[i]=af.gra(out[i])*gradient[i]*sca*eta;
+		for(unsigned	i=0;	i<output;	i++)	out[i]=af.gra(out[i])*bac[i]*sca;
 		for(unsigned	i=0;	i<=n;	i++){
 			float	*p=w(i<n?inp[i]:input);
 			for(unsigned	j=0;	j<output;	j++)	p[j]-=out[j];

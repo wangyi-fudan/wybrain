@@ -8,6 +8,8 @@
 #include	<math.h>
 #include	<time.h>
 uint64_t	wybrain_seed=wyhash64(time(NULL),rand());
+float	learning_rate=0.1;
+
 template<unsigned	input,	unsigned	output,	class	type=float>
 struct	matrix{
 	type	weight[input*output];
