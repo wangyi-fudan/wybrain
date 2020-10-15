@@ -53,5 +53,5 @@ struct	af_atan{
 	float	gra(float	x){	x=cosf(x);;	return	x*x;	}
 };
 
-typedef	af_softsign	af_default;
+typedef	af_isru	af_default;
 #endif
